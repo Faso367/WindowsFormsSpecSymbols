@@ -15,6 +15,7 @@ namespace WindowsFormsApp1
         private ComboBox groupComboBox;
         private DataGridView dataGridView;
         private TextBox textBox;
+        private bool isInitialized = false;
         private Dictionary<string, string[]> symbolGroups = new Dictionary<string, string[]>
         {
             { "Математические символы", new string[] { "±", "∙", "×", "÷", "≠", "≈", "√", "∛", "∜", "≤", "≥", "∫", "∧", "∨", "¬", "∞", "∂" } },
@@ -32,16 +33,23 @@ namespace WindowsFormsApp1
 
         public Form1()
         {
-            InitializeComponent();
-            InitializeUI();
+            try
+            {
+                InitializeComponent();
+                InitializeUI();
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при инициализации формы: " + ex.Message);
+            }
         }
 
         private void InitializeUI()
         {
-
             // Устанавливаем размер формы
-            this.Width = 800;  // Ширина окна
-            this.Height = 600; // Высота окна
+            this.Width = 800;
+            this.Height = 600;
 
             // Создаем ComboBox для выбора группы символов
             groupComboBox = new ComboBox
@@ -54,11 +62,14 @@ namespace WindowsFormsApp1
             groupComboBox.SelectedIndexChanged += GroupComboBox_SelectedIndexChanged;
 
             // Заполняем ComboBox ключами из словаря символов
+            groupComboBox.Items.Add("Все элементы");
             foreach (var groupName in symbolGroups.Keys)
             {
                 groupComboBox.Items.Add(groupName);
             }
 
+            // Устанавливаем "Все элементы" как выбранный по умолчанию
+            groupComboBox.SelectedIndex = 0;
             this.Controls.Add(groupComboBox);
 
             // Создаем TextBox для вывода символов
@@ -67,17 +78,15 @@ namespace WindowsFormsApp1
                 Location = new Point(300, 10),
                 Width = 350,
                 Font = new Font("Arial", 12, FontStyle.Regular)
-                //ReadOnly = true,
-                //BorderStyle = BorderStyle.None,
-                //BackColor = this.BackColor
             };
             this.Controls.Add(textBox);
 
+            // Создаем DataGridView для отображения символов
             dataGridView = new DataGridView
             {
                 Location = new Point(10, 50),
                 Width = 1000,
-                Height = 500,
+                Height = 600,
                 ColumnCount = 10,
                 RowTemplate = { Height = 40 },
                 AllowUserToAddRows = false,
@@ -85,7 +94,6 @@ namespace WindowsFormsApp1
                 AllowUserToResizeRows = false,
                 ReadOnly = true
             };
-
 
             // Настраиваем стиль DataGridView
             dataGridView.CellBorderStyle = DataGridViewCellBorderStyle.Single;
@@ -103,45 +111,67 @@ namespace WindowsFormsApp1
             }
 
             this.Controls.Add(dataGridView);
-        }
 
+            // Устанавливаем флаг после полной инициализации формы
+            isInitialized = true;
+
+            // Отображаем символы для начальной группы
+            DisplaySymbols("Все элементы");
+        }
         private void GroupComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            string selectedGroup = groupComboBox.SelectedItem.ToString();
-            LoadSymbols(selectedGroup);
+            if (isInitialized && groupComboBox.SelectedItem != null)
+            {
+                string selectedGroup = groupComboBox.SelectedItem.ToString();
+                DisplaySymbols(selectedGroup);
+            }
         }
 
-        private void LoadSymbols(string groupName)
+        // Метод для отображения символов в DataGridView
+        private void DisplaySymbols(string groupName)
         {
             // Очищаем DataGridView перед загрузкой новых символов
             dataGridView.Rows.Clear();
 
             // Получаем символы для выбранной группы
-            if (symbolGroups.TryGetValue(groupName, out string[] symbols))
+            List<string> symbolsToDisplay = new List<string>();
+            if (groupName == "Все элементы")
             {
-                int symbolIndex = 0;
-                int rowCount = (int)Math.Ceiling(symbols.Length / 10.0);
-                dataGridView.RowCount = rowCount;
+                // Собираем все символы из всех групп
+                foreach (var symbolList in symbolGroups.Values)
+                {
+                    symbolsToDisplay.AddRange(symbolList);
+                }
+            }
+            else if (symbolGroups.TryGetValue(groupName, out string[] symbols))
+            {
+                symbolsToDisplay.AddRange(symbols);
+            }
 
-                // Задаем ширину колонок
+            int symbolIndex = 0;
+            int rowCount = (int)Math.Ceiling(symbolsToDisplay.Count / 10.0);
+            dataGridView.RowCount = rowCount;
+
+            // Задаем ширину колонок
+            for (int col = 0; col < dataGridView.ColumnCount; col++)
+            {
+                dataGridView.Columns[col].Width = 50;
+            }
+
+            // Заполняем DataGridView символами и устанавливаем высоту строк
+            for (int row = 0; row < rowCount; row++)
+            {
+                dataGridView.Rows[row].Height = 40; // Устанавливаем высоту строки
+
                 for (int col = 0; col < dataGridView.ColumnCount; col++)
                 {
-                    dataGridView.Columns[col].Width = 50;
-                }
-
-                // Заполняем DataGridView символами
-                for (int row = 0; row < rowCount; row++)
-                {
-                    for (int col = 0; col < dataGridView.ColumnCount; col++)
+                    if (symbolIndex < symbolsToDisplay.Count)
                     {
-                        if (symbolIndex < symbols.Length)
-                        {
-                            dataGridView[col, row].Value = symbols[symbolIndex++];
-                        }
-                        else
-                        {
-                            dataGridView[col, row].Value = string.Empty;
-                        }
+                        dataGridView[col, row].Value = symbolsToDisplay[symbolIndex++];
+                    }
+                    else
+                    {
+                        dataGridView[col, row].Value = string.Empty;
                     }
                 }
             }
@@ -159,6 +189,9 @@ namespace WindowsFormsApp1
             }
         }
 
+
+
+
         private void DataGridView_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
         {
             if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
@@ -170,7 +203,7 @@ namespace WindowsFormsApp1
                 {
                     using (var brush = new SolidBrush(e.CellStyle.ForeColor))
                     {
-                        var font = new Font("Arial", 24, FontStyle.Regular);
+                        var font = new Font("Arial", 20, FontStyle.Regular);
                         var format = new StringFormat
                         {
                             Alignment = StringAlignment.Center,
