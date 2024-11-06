@@ -150,6 +150,7 @@
             this.symbolTable1.Size = new System.Drawing.Size(421, 343);
             this.symbolTable1.TabIndex = 7;
             this.symbolTable1.VirtualMode = true;
+            this.symbolTable1.CurrentCellChanged += new System.EventHandler(this.symbolTable1_CurrentCellChanged);
             // 
             // dataGridViewTextBoxColumn1
             // 
